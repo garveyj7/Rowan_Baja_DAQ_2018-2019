@@ -1,0 +1,35 @@
+#include <TimerThree.h>
+#include <Wire.h> // Enable this line if using Arduino Uno, Mega, etc.
+
+const int tachPin = 3;
+
+const int refreshRate = 100;
+
+unsigned int sparkCount;
+unsigned int RPM;
+unsigned long currMillis;
+unsigned long prevMillis;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(tachPin, INPUT);
+  attachInterrupt(digitalPinToInterrupt(tachPin), incrementSparkCount, RISING);
+}
+
+void loop() {
+  currMillis = millis();
+  if ((currMillis - prevMillis) >= refreshRate){
+    prevMillis = currMillis;
+    findRPM();
+  }
+}
+
+void incrementSparkCount(){
+  sparkCount++;
+}
+
+void findRPM(){
+  RPM = (sparkCount) * 600;
+  sparkCount = 0;
+  Serial.println(RPM);
+}
