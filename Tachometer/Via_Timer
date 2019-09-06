@@ -1,0 +1,54 @@
+// Variables
+const int analogPinTach = A0; // INPUT from inductive rpm sensor
+
+byte rpmCount;        // Holds number of spark plug pulses
+byte tachState;       // Switch variable
+int rpm;              // Holds RPM value
+int rpmArray [5];     // Tach filter
+byte rpmArrayPointer; // Tach filter pointer
+
+const byte refreshCycle = 100;  // Refresh every 100 ms (0.1s)
+
+// Function Prototypes
+void pollRpm(void);   // Poll analog pin for spark plug pulses
+void findRpm(void);   // Calculate RPM
+
+// Setup
+void setup() {
+  Serial.begin(9600);
+  pinMode(analogPinTach, INPUT);  // Pin A0 is an input for tach
+}
+
+// Loop
+void loop(){
+  pollRpm();  // Poll tachometer pin for spark plug pulses (there's a better way to do this, this just worked well)
+  if ((millis() % refreshCycle) == 0){
+    findRpm();  // Calculate RPM every 100 ms
+  }
+}
+
+void pollRpm(void){
+  int analogTachVoltage = analogRead(analogPinTach);  // Find voltage on tach pin
+  // If ADC returns value greater than 15 and switch is false, increment spark plug pulse count and switch = true
+  if (analogTachVoltage > 15 && tachState == 0) {
+    rpmCount++;
+    tachState = 1;
+  }
+  // Else, ignore erroneous pulses
+  else if (analogTachVoltage > 15 && tachState == 1) {tachState = 1;}
+  else if (analogTachVoltage < 15) {tachState = 0;}
+}
+
+void findRpm(void){
+  int newRpm;       // Local rpm variable
+  // Moving average filter
+  if (rpmArrayPointer < 5){
+    rpmArray[rpmArrayPointer] = rpmCount; // Assign the current cycle's pulse count to a location in the filter
+    rpmArrayPointer++;  // Advance filter pointer location
+    if (rpmArrayPointer >= 5){rpmArrayPointer = 0;}
+  }
+  for (int i = 0; i < 5; i++){newRpm += rpmArray[i];}  // Calculate average of filter
+  newRpm = newRpm * 120;  // Calculate rpm
+  rpm = min(4000, newRpm);  // Max RPM is 4000 (Prevents errors and rpm spikes)
+  rpmCount = 0; // Reset counter to 0
+}
